@@ -3,9 +3,10 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from django.contrib.auth.models import User
-from .models import Category, Product, Cart, Order, OrderItem
+from .models import Category, Product, Cart, Order, OrderItem, DeliveryAgent, DeliveryAssignment
 from .serializers import CategorySerializer, ProductSerializer, CartSerializer, OrderSerializer
 from .notifications import send_order_notification
+from django.utils import timezone
 import razorpay
 import os
 
@@ -97,8 +98,9 @@ def order_tracking(request, order_id):
             'total_price': str(order.total_price),
             'created_at': order.created_at,
             'status_steps': {
-                'pending': order.status in ['pending', 'confirmed', 'delivered'],
-                'confirmed': order.status in ['confirmed', 'delivered'],
+                'pending': order.status in ['pending', 'confirmed', 'out_for_delivery', 'delivered'],
+                'confirmed': order.status in ['confirmed', 'out_for_delivery', 'delivered'],
+                'out_for_delivery': order.status in ['out_for_delivery', 'delivered'],
                 'delivered': order.status == 'delivered',
             }
         })
@@ -109,15 +111,12 @@ def order_tracking(request, order_id):
 @permission_classes([IsAuthenticated])
 def create_payment(request):
     amount = request.data.get('amount')
-    
     order_data = {
-        'amount': int(amount) * 100,  # Razorpay paise mein leta hai
+        'amount': int(amount) * 100,
         'currency': 'INR',
         'payment_capture': 1
     }
-    
     razorpay_order = razorpay_client.order.create(order_data)
-    
     return Response({
         'order_id': razorpay_order['id'],
         'amount': amount,
@@ -131,7 +130,6 @@ def verify_payment(request):
     payment_id = request.data.get('razorpay_payment_id')
     order_id = request.data.get('razorpay_order_id')
     signature = request.data.get('razorpay_signature')
-    
     try:
         razorpay_client.utility.verify_payment_signature({
             'razorpay_order_id': order_id,
@@ -141,3 +139,58 @@ def verify_payment(request):
         return Response({'message': 'Payment verified! ✅', 'status': 'success'})
     except:
         return Response({'message': 'Payment failed ❌', 'status': 'failed'}, status=400)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def register_agent(request):
+    phone = request.data.get('phone')
+    if DeliveryAgent.objects.filter(user=request.user).exists():
+        return Response({'error': 'Agent already registered'}, status=400)
+    agent = DeliveryAgent.objects.create(user=request.user, phone=phone)
+    return Response({'message': 'Delivery agent registered! ✅', 'agent_id': agent.id})
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def assign_agent(request, order_id):
+    try:
+        order = Order.objects.get(id=order_id)
+        agent = DeliveryAgent.objects.filter(is_available=True).first()
+        if not agent:
+            return Response({'error': 'Koi agent available nahi hai'}, status=400)
+        assignment = DeliveryAssignment.objects.create(order=order, agent=agent)
+        agent.is_available = False
+        agent.save()
+        order.status = 'out_for_delivery'
+        order.save()
+        return Response({'message': f'Agent {agent.user.username} assigned! 🚴', 'assignment_id': assignment.id})
+    except Order.DoesNotExist:
+        return Response({'error': 'Order nahi mila'}, status=404)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def mark_delivered(request, order_id):
+    try:
+        assignment = DeliveryAssignment.objects.get(order__id=order_id)
+        assignment.delivered_at = timezone.now()
+        assignment.save()
+        assignment.agent.is_available = True
+        assignment.agent.save()
+        assignment.order.status = 'delivered'
+        assignment.order.save()
+        return Response({'message': 'Order delivered! 🎉'})
+    except DeliveryAssignment.DoesNotExist:
+        return Response({'error': 'Assignment nahi mila'}, status=404)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def agent_status(request):
+    try:
+        agent = DeliveryAgent.objects.get(user=request.user)
+        return Response({
+            'agent': agent.user.username,
+            'phone': agent.phone,
+            'is_available': agent.is_available,
+            'current_location': agent.current_location,
+        })
+    except DeliveryAgent.DoesNotExist:
+        return Response({'error': 'Agent nahi mila'}, status=404)

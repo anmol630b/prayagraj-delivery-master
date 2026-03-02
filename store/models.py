@@ -33,6 +33,7 @@ class Order(models.Model):
     STATUS_CHOICES = [
         ('pending', 'Pending'),
         ('confirmed', 'Confirmed'),
+        ('out_for_delivery', 'Out for Delivery'),
         ('delivered', 'Delivered'),
         ('cancelled', 'Cancelled'),
     ]
@@ -53,3 +54,21 @@ class OrderItem(models.Model):
 
     def __str__(self):
         return f"{self.product.name} x {self.quantity}"
+
+class DeliveryAgent(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    phone = models.CharField(max_length=15)
+    is_available = models.BooleanField(default=True)
+    current_location = models.CharField(max_length=255, blank=True)
+
+    def __str__(self):
+        return f"Agent: {self.user.username}"
+
+class DeliveryAssignment(models.Model):
+    order = models.OneToOneField(Order, on_delete=models.CASCADE)
+    agent = models.ForeignKey(DeliveryAgent, on_delete=models.SET_NULL, null=True)
+    assigned_at = models.DateTimeField(auto_now_add=True)
+    delivered_at = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self):
+        return f"Order #{self.order.id} → {self.agent.user.username}"
