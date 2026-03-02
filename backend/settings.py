@@ -11,9 +11,10 @@ SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-local-only-change-in-
 DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '*').split(',')
 
-CSRF_TRUSTED_ORIGINS = [
-    'https://web-production-d08a8.up.railway.app',
-]
+CSRF_TRUSTED_ORIGINS = os.environ.get(
+    'CSRF_TRUSTED_ORIGINS',
+    'https://web-production-d08a8.up.railway.app'
+).split(',')
 
 INSTALLED_APPS = [
     'django.contrib.admin',
