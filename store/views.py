@@ -6,6 +6,13 @@ from django.contrib.auth.models import User
 from .models import Category, Product, Cart, Order, OrderItem
 from .serializers import CategorySerializer, ProductSerializer, CartSerializer, OrderSerializer
 from .notifications import send_order_notification
+import razorpay
+import os
+
+# Razorpay client
+razorpay_client = razorpay.Client(
+    auth=(os.environ.get('RAZORPAY_KEY_ID'), os.environ.get('RAZORPAY_KEY_SECRET'))
+)
 
 class CategoryViewSet(viewsets.ModelViewSet):
     queryset = Category.objects.all()
@@ -68,7 +75,6 @@ def order_view(request):
         
         cart_items.delete()
 
-        # Notification bhejo
         fcm_token = request.data.get('fcm_token')
         if fcm_token:
             send_order_notification(
@@ -98,3 +104,40 @@ def order_tracking(request, order_id):
         })
     except Order.DoesNotExist:
         return Response({'error': 'Order not found'}, status=status.HTTP_404_NOT_FOUND)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def create_payment(request):
+    amount = request.data.get('amount')
+    
+    order_data = {
+        'amount': int(amount) * 100,  # Razorpay paise mein leta hai
+        'currency': 'INR',
+        'payment_capture': 1
+    }
+    
+    razorpay_order = razorpay_client.order.create(order_data)
+    
+    return Response({
+        'order_id': razorpay_order['id'],
+        'amount': amount,
+        'currency': 'INR',
+        'key': os.environ.get('RAZORPAY_KEY_ID')
+    })
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def verify_payment(request):
+    payment_id = request.data.get('razorpay_payment_id')
+    order_id = request.data.get('razorpay_order_id')
+    signature = request.data.get('razorpay_signature')
+    
+    try:
+        razorpay_client.utility.verify_payment_signature({
+            'razorpay_order_id': order_id,
+            'razorpay_payment_id': payment_id,
+            'razorpay_signature': signature
+        })
+        return Response({'message': 'Payment verified! ✅', 'status': 'success'})
+    except:
+        return Response({'message': 'Payment failed ❌', 'status': 'failed'}, status=400)
