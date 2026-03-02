@@ -43,3 +43,7 @@ typing_extensions==4.15.0
 urllib3==2.6.3
 razorpay==2.0.0
 whitenoise
+cloudinary
+django-cloudinary-storage
+cloudinary
+django-cloudinary-storage
