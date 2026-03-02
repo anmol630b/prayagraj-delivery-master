@@ -23,6 +23,34 @@ class ProductViewSet(viewsets.ModelViewSet):
     queryset = Product.objects.all()
     serializer_class = ProductSerializer
 
+    def get_queryset(self):
+        queryset = Product.objects.filter(is_available=True)
+        
+        search = self.request.query_params.get('search')
+        if search:
+            queryset = queryset.filter(name__icontains=search)
+        
+        category = self.request.query_params.get('category')
+        if category:
+            queryset = queryset.filter(category__id=category)
+        
+        min_price = self.request.query_params.get('min_price')
+        max_price = self.request.query_params.get('max_price')
+        if min_price:
+            queryset = queryset.filter(price__gte=min_price)
+        if max_price:
+            queryset = queryset.filter(price__lte=max_price)
+        
+        sort = self.request.query_params.get('sort')
+        if sort == 'price_low':
+            queryset = queryset.order_by('price')
+        elif sort == 'price_high':
+            queryset = queryset.order_by('-price')
+        elif sort == 'newest':
+            queryset = queryset.order_by('-created_at')
+        
+        return queryset
+
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def register_user(request):
