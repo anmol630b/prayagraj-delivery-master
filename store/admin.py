@@ -16,8 +16,11 @@ class CategoryAdmin(admin.ModelAdmin):
     search_fields = ('name',)
 
     def image_preview(self, obj):
-        if obj.image:
-            return format_html('<img src="{}" height="40" style="border-radius:6px"/>', obj.image.url)
+        try:
+            if obj.image:
+                return format_html('<img src="{}" height="40" style="border-radius:6px"/>', obj.image.url)
+        except:
+            pass
         return '—'
     image_preview.short_description = 'Image'
 
