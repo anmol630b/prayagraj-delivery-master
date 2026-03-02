@@ -1,12 +1,14 @@
 from django.db import models
 from django.contrib.auth.models import User
 
+
 class Category(models.Model):
     name = models.CharField(max_length=200)
     image = models.ImageField(upload_to='categories/', blank=True, null=True)
-    
+
     def __str__(self):
-        return self.name
+        return self.name if self.name else "Category"
+
 
 class Product(models.Model):
     category = models.ForeignKey(Category, on_delete=models.CASCADE)
@@ -16,9 +18,10 @@ class Product(models.Model):
     image = models.ImageField(upload_to='products/', blank=True, null=True)
     is_available = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
-    
+
     def __str__(self):
-        return self.name
+        return self.name if self.name else "Product"
+
 
 class Cart(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
@@ -27,7 +30,9 @@ class Cart(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.user.username} - {self.product.name}"
+        product_name = self.product.name if self.product else "Deleted Product"
+        return f"{self.user.username} - {product_name}"
+
 
 class Order(models.Model):
     STATUS_CHOICES = [
@@ -37,6 +42,7 @@ class Order(models.Model):
         ('delivered', 'Delivered'),
         ('cancelled', 'Cancelled'),
     ]
+
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     total_price = models.DecimalField(max_digits=10, decimal_places=2)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
@@ -46,6 +52,7 @@ class Order(models.Model):
     def __str__(self):
         return f"Order {self.id} - {self.user.username}"
 
+
 class OrderItem(models.Model):
     order = models.ForeignKey(Order, on_delete=models.CASCADE)
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
@@ -53,7 +60,9 @@ class OrderItem(models.Model):
     price = models.DecimalField(max_digits=10, decimal_places=2)
 
     def __str__(self):
-        return f"{self.product.name} x {self.quantity}"
+        product_name = self.product.name if self.product else "Deleted Product"
+        return f"{product_name} x {self.quantity}"
+
 
 class DeliveryAgent(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
@@ -64,11 +73,14 @@ class DeliveryAgent(models.Model):
     def __str__(self):
         return f"Agent: {self.user.username}"
 
+
 class DeliveryAssignment(models.Model):
     order = models.OneToOneField(Order, on_delete=models.CASCADE)
-    agent = models.ForeignKey(DeliveryAgent, on_delete=models.SET_NULL, null=True)
+    agent = models.ForeignKey(DeliveryAgent, on_delete=models.SET_NULL, null=True, blank=True)
     assigned_at = models.DateTimeField(auto_now_add=True)
     delivered_at = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
-        return f"Order #{self.order.id} → {self.agent.user.username}"
+        if self.agent:
+            return f"Order #{self.order.id} → {self.agent.user.username}"
+        return f"Order #{self.order.id} → No Agent Assigned"

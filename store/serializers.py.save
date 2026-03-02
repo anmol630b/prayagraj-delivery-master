@@ -1,5 +1,6 @@
-from rest_framework import serializers
+U+from rest_framework import serializers
 from .models import Category, Product, Cart, Order, OrderItem
+from django.conf import settings
 
 class CategorySerializer(serializers.ModelSerializer):
     image_url = serializers.SerializerMethodField()
@@ -12,7 +13,8 @@ class CategorySerializer(serializers.ModelSerializer):
         if obj.image:
             request = self.context.get('request')
             if request:
-                return request.build_absolute_uri(obj.image.url).replace('http://', 'https://')
+                return request.build_absolute_uri(obj.image.url)
+            return f'http://10.70.155.244:8000{obj.image.url}'
         return None
 
 class ProductSerializer(serializers.ModelSerializer):
@@ -26,7 +28,8 @@ class ProductSerializer(serializers.ModelSerializer):
         if obj.image:
             request = self.context.get('request')
             if request:
-                return request.build_absolute_uri(obj.image.url).replace('http://', 'https://')
+                return request.build_absolute_uri(obj.image.url)
+            return f'http://10.70.155.244:8000{obj.image.url}'
         return None
 
 class CartSerializer(serializers.ModelSerializer):
@@ -44,7 +47,6 @@ class OrderItemSerializer(serializers.ModelSerializer):
 
 class OrderSerializer(serializers.ModelSerializer):
     items = OrderItemSerializer(many=True, read_only=True)
-    
     class Meta:
         model = Order
         fields = '__all__'
