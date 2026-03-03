@@ -6,3 +6,5 @@ razorpay
 firebase-admin
 Pillow
 gunicorn
+cloudinary
+django-cloudinary-storage
