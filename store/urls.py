@@ -4,7 +4,8 @@ from .views import (
     CategoryViewSet, ProductViewSet,
     register_user, cart_view, order_view, order_tracking,
     create_payment, verify_payment,
-    register_agent, assign_agent, mark_delivered, agent_status
+    register_agent, assign_agent, mark_delivered, agent_status,
+    cancel_order
 )
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
@@ -24,6 +25,7 @@ urlpatterns = [
     path('cart/', cart_view, name='cart'),
     path('orders/', order_view, name='orders'),
     path('orders/<int:order_id>/tracking/', order_tracking, name='order_tracking'),
+    path('orders/<int:order_id>/cancel/', cancel_order, name='cancel_order'),
 
     # Payment
     path('payment/create/', create_payment, name='create_payment'),

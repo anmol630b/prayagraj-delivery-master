@@ -10,7 +10,6 @@ from django.utils import timezone
 import razorpay
 import os
 
-# Razorpay client
 razorpay_client = razorpay.Client(
     auth=(os.environ.get('RAZORPAY_KEY_ID'), os.environ.get('RAZORPAY_KEY_SECRET'))
 )
@@ -25,22 +24,18 @@ class ProductViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         queryset = Product.objects.filter(is_available=True)
-        
         search = self.request.query_params.get('search')
         if search:
             queryset = queryset.filter(name__icontains=search)
-        
         category = self.request.query_params.get('category')
         if category:
             queryset = queryset.filter(category__id=category)
-        
         min_price = self.request.query_params.get('min_price')
         max_price = self.request.query_params.get('max_price')
         if min_price:
             queryset = queryset.filter(price__gte=min_price)
         if max_price:
             queryset = queryset.filter(price__lte=max_price)
-        
         sort = self.request.query_params.get('sort')
         if sort == 'price_low':
             queryset = queryset.order_by('price')
@@ -48,7 +43,6 @@ class ProductViewSet(viewsets.ModelViewSet):
             queryset = queryset.order_by('-price')
         elif sort == 'newest':
             queryset = queryset.order_by('-created_at')
-        
         return queryset
 
 @api_view(['POST'])
@@ -56,12 +50,10 @@ class ProductViewSet(viewsets.ModelViewSet):
 def register_user(request):
     username = request.data.get('username')
     password = request.data.get('password')
-    email = request.data.get('email')
-    
+    email    = request.data.get('email')
     if User.objects.filter(username=username).exists():
         return Response({'error': 'Username already exists'}, status=status.HTTP_400_BAD_REQUEST)
-    
-    user = User.objects.create_user(username=username, password=password, email=email)
+    User.objects.create_user(username=username, password=password, email=email)
     return Response({'message': 'User created successfully'}, status=status.HTTP_201_CREATED)
 
 @api_view(['GET', 'POST', 'PATCH', 'DELETE'])
@@ -74,12 +66,11 @@ def cart_view(request):
 
     elif request.method == 'POST':
         product_id = request.data.get('product')
-        quantity = request.data.get('quantity', 1)
+        quantity   = request.data.get('quantity', 1)
         try:
             product = Product.objects.get(id=product_id)
         except Product.DoesNotExist:
             return Response({'error': 'Product nahi mila'}, status=404)
-        
         cart_item, created = Cart.objects.get_or_create(
             user=request.user, product=product,
             defaults={'quantity': quantity}
@@ -87,15 +78,14 @@ def cart_view(request):
         if not created:
             cart_item.quantity += quantity
             cart_item.save()
-        
         serializer = CartSerializer(cart_item)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     elif request.method == 'PATCH':
-        cart_id = request.data.get('cart_id')
+        cart_id  = request.data.get('cart_id')
         quantity = request.data.get('quantity')
         try:
-            cart_item = Cart.objects.get(id=cart_id, user=request.user)
+            cart_item          = Cart.objects.get(id=cart_id, user=request.user)
             cart_item.quantity = quantity
             cart_item.save()
             return Response({'status': 'updated'})
@@ -115,25 +105,23 @@ def cart_view(request):
 @permission_classes([IsAuthenticated])
 def order_view(request):
     if request.method == 'GET':
-        orders = Order.objects.filter(user=request.user).order_by('-created_at')
+        orders     = Order.objects.filter(user=request.user).order_by('-created_at')
         serializer = OrderSerializer(orders, many=True)
         return Response(serializer.data)
-    
+
     elif request.method == 'POST':
         cart_items = Cart.objects.filter(user=request.user)
         if not cart_items:
             return Response({'error': 'Cart is empty'}, status=status.HTTP_400_BAD_REQUEST)
-        
-        total = sum(item.product.price * item.quantity for item in cart_items)
+        total   = sum(item.product.price * item.quantity for item in cart_items)
         address = request.data.get('address', '')
-        
-        order = Order.objects.create(user=request.user, total_price=total, address=address)
-        
+        order   = Order.objects.create(user=request.user, total_price=total, address=address)
         for item in cart_items:
-            OrderItem.objects.create(order=order, product=item.product, quantity=item.quantity, price=item.product.price)
-        
+            OrderItem.objects.create(
+                order=order, product=item.product,
+                quantity=item.quantity, price=item.product.price
+            )
         cart_items.delete()
-
         fcm_token = request.data.get('fcm_token')
         if fcm_token:
             send_order_notification(
@@ -141,8 +129,30 @@ def order_view(request):
                 title="Order Placed! 🎉",
                 body=f"Aapka order #{order.id} successfully place ho gaya!"
             )
+        return Response(
+            {'message': 'Order placed successfully', 'order_id': order.id},
+            status=status.HTTP_201_CREATED
+        )
 
-        return Response({'message': 'Order placed successfully', 'order_id': order.id}, status=status.HTTP_201_CREATED)
+# ── Order Cancel API ─────────────────────────────────────────
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def cancel_order(request, order_id):
+    try:
+        order = Order.objects.get(id=order_id, user=request.user)
+    except Order.DoesNotExist:
+        return Response({'error': 'Order nahi mila'}, status=404)
+
+    # Sirf pending orders cancel ho sakte hain
+    if order.status != 'pending':
+        return Response(
+            {'error': f'Order cancel nahi ho sakta. Current status: {order.status}'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    order.status = 'cancelled'
+    order.save()
+    return Response({'message': f'Order #{order.id} cancel ho gaya ✅'})
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
@@ -150,16 +160,16 @@ def order_tracking(request, order_id):
     try:
         order = Order.objects.get(id=order_id, user=request.user)
         return Response({
-            'order_id': order.id,
-            'status': order.status,
-            'address': order.address,
+            'order_id':    order.id,
+            'status':      order.status,
+            'address':     order.address,
             'total_price': str(order.total_price),
-            'created_at': order.created_at,
+            'created_at':  order.created_at,
             'status_steps': {
-                'pending': order.status in ['pending', 'confirmed', 'out_for_delivery', 'delivered'],
-                'confirmed': order.status in ['confirmed', 'out_for_delivery', 'delivered'],
+                'pending':          order.status in ['pending', 'confirmed', 'out_for_delivery', 'delivered'],
+                'confirmed':        order.status in ['confirmed', 'out_for_delivery', 'delivered'],
                 'out_for_delivery': order.status in ['out_for_delivery', 'delivered'],
-                'delivered': order.status == 'delivered',
+                'delivered':        order.status == 'delivered',
             }
         })
     except Order.DoesNotExist:
@@ -170,29 +180,29 @@ def order_tracking(request, order_id):
 def create_payment(request):
     amount = request.data.get('amount')
     order_data = {
-        'amount': int(amount) * 100,
-        'currency': 'INR',
+        'amount':          int(amount) * 100,
+        'currency':        'INR',
         'payment_capture': 1
     }
     razorpay_order = razorpay_client.order.create(order_data)
     return Response({
         'order_id': razorpay_order['id'],
-        'amount': amount,
+        'amount':   amount,
         'currency': 'INR',
-        'key': os.environ.get('RAZORPAY_KEY_ID')
+        'key':      os.environ.get('RAZORPAY_KEY_ID')
     })
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def verify_payment(request):
     payment_id = request.data.get('razorpay_payment_id')
-    order_id = request.data.get('razorpay_order_id')
-    signature = request.data.get('razorpay_signature')
+    order_id   = request.data.get('razorpay_order_id')
+    signature  = request.data.get('razorpay_signature')
     try:
         razorpay_client.utility.verify_payment_signature({
-            'razorpay_order_id': order_id,
+            'razorpay_order_id':  order_id,
             'razorpay_payment_id': payment_id,
-            'razorpay_signature': signature
+            'razorpay_signature':  signature
         })
         return Response({'message': 'Payment verified! ✅', 'status': 'success'})
     except:
@@ -215,12 +225,15 @@ def assign_agent(request, order_id):
         agent = DeliveryAgent.objects.filter(is_available=True).first()
         if not agent:
             return Response({'error': 'Koi agent available nahi hai'}, status=400)
-        assignment = DeliveryAssignment.objects.create(order=order, agent=agent)
-        agent.is_available = False
+        assignment            = DeliveryAssignment.objects.create(order=order, agent=agent)
+        agent.is_available    = False
         agent.save()
-        order.status = 'out_for_delivery'
+        order.status          = 'out_for_delivery'
         order.save()
-        return Response({'message': f'Agent {agent.user.username} assigned! 🚴', 'assignment_id': assignment.id})
+        return Response({
+            'message':       f'Agent {agent.user.username} assigned! 🚴',
+            'assignment_id': assignment.id
+        })
     except Order.DoesNotExist:
         return Response({'error': 'Order nahi mila'}, status=404)
 
@@ -228,12 +241,12 @@ def assign_agent(request, order_id):
 @permission_classes([IsAuthenticated])
 def mark_delivered(request, order_id):
     try:
-        assignment = DeliveryAssignment.objects.get(order__id=order_id)
-        assignment.delivered_at = timezone.now()
+        assignment                      = DeliveryAssignment.objects.get(order__id=order_id)
+        assignment.delivered_at         = timezone.now()
         assignment.save()
-        assignment.agent.is_available = True
+        assignment.agent.is_available   = True
         assignment.agent.save()
-        assignment.order.status = 'delivered'
+        assignment.order.status         = 'delivered'
         assignment.order.save()
         return Response({'message': 'Order delivered! 🎉'})
     except DeliveryAssignment.DoesNotExist:
@@ -245,9 +258,9 @@ def agent_status(request):
     try:
         agent = DeliveryAgent.objects.get(user=request.user)
         return Response({
-            'agent': agent.user.username,
-            'phone': agent.phone,
-            'is_available': agent.is_available,
+            'agent':            agent.user.username,
+            'phone':            agent.phone,
+            'is_available':     agent.is_available,
             'current_location': agent.current_location,
         })
     except DeliveryAgent.DoesNotExist:
