@@ -134,7 +134,6 @@ def order_view(request):
             status=status.HTTP_201_CREATED
         )
 
-# ── Order Cancel API ─────────────────────────────────────────
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def cancel_order(request, order_id):
@@ -142,17 +141,30 @@ def cancel_order(request, order_id):
         order = Order.objects.get(id=order_id, user=request.user)
     except Order.DoesNotExist:
         return Response({'error': 'Order nahi mila'}, status=404)
-
-    # Sirf pending orders cancel ho sakte hain
     if order.status != 'pending':
         return Response(
             {'error': f'Order cancel nahi ho sakta. Current status: {order.status}'},
             status=status.HTTP_400_BAD_REQUEST
         )
-
     order.status = 'cancelled'
     order.save()
     return Response({'message': f'Order #{order.id} cancel ho gaya ✅'})
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def change_password(request):
+    old_password = request.data.get('old_password')
+    new_password = request.data.get('new_password')
+    if not old_password or not new_password:
+        return Response({'error': 'Dono passwords required hain'}, status=400)
+    user = request.user
+    if not user.check_password(old_password):
+        return Response({'error': 'Purana password galat hai ❌'}, status=400)
+    if len(new_password) < 6:
+        return Response({'error': 'Naya password kam se kam 6 characters ka hona chahiye'}, status=400)
+    user.set_password(new_password)
+    user.save()
+    return Response({'message': 'Password change ho gaya! ✅'})
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
@@ -200,7 +212,7 @@ def verify_payment(request):
     signature  = request.data.get('razorpay_signature')
     try:
         razorpay_client.utility.verify_payment_signature({
-            'razorpay_order_id':  order_id,
+            'razorpay_order_id':   order_id,
             'razorpay_payment_id': payment_id,
             'razorpay_signature':  signature
         })
@@ -225,10 +237,10 @@ def assign_agent(request, order_id):
         agent = DeliveryAgent.objects.filter(is_available=True).first()
         if not agent:
             return Response({'error': 'Koi agent available nahi hai'}, status=400)
-        assignment            = DeliveryAssignment.objects.create(order=order, agent=agent)
-        agent.is_available    = False
+        assignment         = DeliveryAssignment.objects.create(order=order, agent=agent)
+        agent.is_available = False
         agent.save()
-        order.status          = 'out_for_delivery'
+        order.status       = 'out_for_delivery'
         order.save()
         return Response({
             'message':       f'Agent {agent.user.username} assigned! 🚴',
@@ -241,12 +253,12 @@ def assign_agent(request, order_id):
 @permission_classes([IsAuthenticated])
 def mark_delivered(request, order_id):
     try:
-        assignment                      = DeliveryAssignment.objects.get(order__id=order_id)
-        assignment.delivered_at         = timezone.now()
+        assignment                    = DeliveryAssignment.objects.get(order__id=order_id)
+        assignment.delivered_at       = timezone.now()
         assignment.save()
-        assignment.agent.is_available   = True
+        assignment.agent.is_available = True
         assignment.agent.save()
-        assignment.order.status         = 'delivered'
+        assignment.order.status       = 'delivered'
         assignment.order.save()
         return Response({'message': 'Order delivered! 🎉'})
     except DeliveryAssignment.DoesNotExist:

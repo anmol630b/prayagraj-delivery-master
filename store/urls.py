@@ -5,7 +5,7 @@ from .views import (
     register_user, cart_view, order_view, order_tracking,
     create_payment, verify_payment,
     register_agent, assign_agent, mark_delivered, agent_status,
-    cancel_order
+    cancel_order, change_password
 )
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
@@ -36,4 +36,7 @@ urlpatterns = [
     path('agent/status/', agent_status, name='agent_status'),
     path('orders/<int:order_id>/assign/', assign_agent, name='assign_agent'),
     path('orders/<int:order_id>/delivered/', mark_delivered, name='mark_delivered'),
+
+    # Account
+    path('change-password/', change_password, name='change_password'),
 ]
