@@ -64,22 +64,52 @@ def register_user(request):
     user = User.objects.create_user(username=username, password=password, email=email)
     return Response({'message': 'User created successfully'}, status=status.HTTP_201_CREATED)
 
-@api_view(['GET', 'POST'])
+@api_view(['GET', 'POST', 'PATCH', 'DELETE'])
 @permission_classes([IsAuthenticated])
 def cart_view(request):
     if request.method == 'GET':
-        cart = Cart.objects.filter(user=request.user)
-        serializer = CartSerializer(cart, many=True)
+        cart_items = Cart.objects.filter(user=request.user)
+        serializer = CartSerializer(cart_items, many=True)
         return Response(serializer.data)
-    
+
     elif request.method == 'POST':
         product_id = request.data.get('product')
         quantity = request.data.get('quantity', 1)
-        product = Product.objects.get(id=product_id)
-        cart_item, created = Cart.objects.get_or_create(user=request.user, product=product)
-        cart_item.quantity = quantity
-        cart_item.save()
-        return Response({'message': 'Added to cart'}, status=status.HTTP_201_CREATED)
+        try:
+            product = Product.objects.get(id=product_id)
+        except Product.DoesNotExist:
+            return Response({'error': 'Product nahi mila'}, status=404)
+        
+        cart_item, created = Cart.objects.get_or_create(
+            user=request.user, product=product,
+            defaults={'quantity': quantity}
+        )
+        if not created:
+            cart_item.quantity += quantity
+            cart_item.save()
+        
+        serializer = CartSerializer(cart_item)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    elif request.method == 'PATCH':
+        cart_id = request.data.get('cart_id')
+        quantity = request.data.get('quantity')
+        try:
+            cart_item = Cart.objects.get(id=cart_id, user=request.user)
+            cart_item.quantity = quantity
+            cart_item.save()
+            return Response({'status': 'updated'})
+        except Cart.DoesNotExist:
+            return Response({'error': 'Cart item nahi mila'}, status=404)
+
+    elif request.method == 'DELETE':
+        cart_id = request.data.get('cart_id')
+        try:
+            cart_item = Cart.objects.get(id=cart_id, user=request.user)
+            cart_item.delete()
+            return Response({'status': 'deleted'})
+        except Cart.DoesNotExist:
+            return Response({'error': 'Cart item nahi mila'}, status=404)
 
 @api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])
