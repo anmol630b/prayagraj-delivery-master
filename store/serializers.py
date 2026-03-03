@@ -9,10 +9,11 @@ class CategorySerializer(serializers.ModelSerializer):
         fields = '__all__'
     
     def get_image_url(self, obj):
-        if obj.image:
-            request = self.context.get('request')
-            if request:
-                return request.build_absolute_uri(obj.image.url).replace('http://', 'https://')
+        try:
+            if obj.image:
+                return obj.image.url
+        except:
+            pass
         return None
 
 class ProductSerializer(serializers.ModelSerializer):
@@ -23,10 +24,11 @@ class ProductSerializer(serializers.ModelSerializer):
         fields = '__all__'
     
     def get_image_url(self, obj):
-        if obj.image:
-            request = self.context.get('request')
-            if request:
-                return request.build_absolute_uri(obj.image.url).replace('http://', 'https://')
+        try:
+            if obj.image:
+                return obj.image.url
+        except:
+            pass
         return None
 
 class CartSerializer(serializers.ModelSerializer):
