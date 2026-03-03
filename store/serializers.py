@@ -9,15 +9,7 @@ class CategorySerializer(serializers.ModelSerializer):
         fields = '__all__'
     
     def get_image_url(self, obj):
-        try:
-            if obj.image:
-                url = obj.image.url
-                if url.startswith('http'):
-                    return url
-                return f'https://web-production-d08a8.up.railway.app{url}'
-        except:
-            pass
-        return None
+        return obj.image if obj.image else None
 
 class ProductSerializer(serializers.ModelSerializer):
     image_url = serializers.SerializerMethodField()
@@ -27,15 +19,7 @@ class ProductSerializer(serializers.ModelSerializer):
         fields = '__all__'
     
     def get_image_url(self, obj):
-        try:
-            if obj.image:
-                url = obj.image.url
-                if url.startswith('http'):
-                    return url
-                return f'https://web-production-d08a8.up.railway.app{url}'
-        except:
-            pass
-        return None
+        return obj.image if obj.image else None
 
 class CartSerializer(serializers.ModelSerializer):
     product_name = serializers.CharField(source='product.name', read_only=True)
