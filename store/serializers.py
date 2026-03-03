@@ -11,7 +11,10 @@ class CategorySerializer(serializers.ModelSerializer):
     def get_image_url(self, obj):
         try:
             if obj.image:
-                return obj.image.url
+                url = obj.image.url
+                if url.startswith('http'):
+                    return url
+                return f'https://web-production-d08a8.up.railway.app{url}'
         except:
             pass
         return None
@@ -26,7 +29,10 @@ class ProductSerializer(serializers.ModelSerializer):
     def get_image_url(self, obj):
         try:
             if obj.image:
-                return obj.image.url
+                url = obj.image.url
+                if url.startswith('http'):
+                    return url
+                return f'https://web-production-d08a8.up.railway.app{url}'
         except:
             pass
         return None
