@@ -1,5 +1,6 @@
 from django.contrib import admin
 from django.utils.html import format_html
+from django.utils.safestring import mark_safe
 from .models import Category, Product, Cart, Order, OrderItem, DeliveryAgent, DeliveryAssignment
 
 
@@ -35,8 +36,8 @@ class ProductAdmin(admin.ModelAdmin):
 
     def availability_badge(self, obj):
         if obj.is_available:
-            return format_html('<span style="background:#22c55e;color:white;padding:3px 10px;border-radius:12px;font-size:12px">✅ Available</span>')
-        return format_html('<span style="background:#ef4444;color:white;padding:3px 10px;border-radius:12px;font-size:12px">❌ Unavailable</span>')
+            return mark_safe('<span style="background:#22c55e;color:white;padding:3px 10px;border-radius:12px;font-size:12px">✅ Available</span>')
+        return mark_safe('<span style="background:#ef4444;color:white;padding:3px 10px;border-radius:12px;font-size:12px">❌ Unavailable</span>')
     availability_badge.short_description = 'Status'
 
 
@@ -74,10 +75,8 @@ class OrderAdmin(admin.ModelAdmin):
         }
         color = colors.get(obj.status, '#888')
         icon = icons.get(obj.status, '')
-        return format_html(
-            '<span style="background:{};color:white;padding:3px 12px;border-radius:12px;font-size:12px">{} {}</span>',
-            color, icon, obj.status.replace('_', ' ').title()
-        )
+        label = obj.status.replace('_', ' ').title()
+        return mark_safe(f'<span style="background:{color};color:white;padding:3px 12px;border-radius:12px;font-size:12px">{icon} {label}</span>')
     status_badge.short_description = 'Status'
 
     def address_short(self, obj):
@@ -115,8 +114,8 @@ class DeliveryAgentAdmin(admin.ModelAdmin):
 
     def availability_badge(self, obj):
         if obj.is_available:
-            return format_html('<span style="background:#22c55e;color:white;padding:3px 10px;border-radius:12px;font-size:12px">🟢 Available</span>')
-        return format_html('<span style="background:#ef4444;color:white;padding:3px 10px;border-radius:12px;font-size:12px">🔴 Busy</span>')
+            return mark_safe('<span style="background:#22c55e;color:white;padding:3px 10px;border-radius:12px;font-size:12px">🟢 Available</span>')
+        return mark_safe('<span style="background:#ef4444;color:white;padding:3px 10px;border-radius:12px;font-size:12px">🔴 Busy</span>')
     availability_badge.short_description = 'Status'
 
 
