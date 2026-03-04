@@ -83,3 +83,14 @@ class DeliveryAssignment(models.Model):
         if self.agent:
             return f"Order #{self.order.id} → {self.agent.user.username}"
         return f"Order #{self.order.id} → No Agent Assigned"
+
+
+class ChatMessage(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    message = models.TextField()
+    is_admin = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        sender = "Admin" if self.is_admin else self.user.username
+        return f"{sender}: {self.message[:30]}"

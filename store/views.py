@@ -3,7 +3,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from django.contrib.auth.models import User
-from .models import Category, Product, Cart, Order, OrderItem, DeliveryAgent, DeliveryAssignment
+from .models import Category, Product, Cart, Order, OrderItem, DeliveryAgent, DeliveryAssignment, ChatMessage
 from .serializers import CategorySerializer, ProductSerializer, CartSerializer, OrderSerializer
 from .notifications import send_order_notification
 from django.utils import timezone
@@ -317,3 +317,32 @@ def agent_status(request):
         })
     except DeliveryAgent.DoesNotExist:
         return Response({'error': 'Agent nahi mila'}, status=404)
+
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
+def chat_messages(request):
+    if request.method == 'GET':
+        messages = ChatMessage.objects.filter(user=request.user).order_by('created_at')
+        data = [{
+            'id': m.id,
+            'message': m.message,
+            'is_admin': m.is_admin,
+            'created_at': m.created_at.strftime('%H:%M'),
+        } for m in messages]
+        return Response(data)
+
+    elif request.method == 'POST':
+        message = request.data.get('message', '').strip()
+        if not message:
+            return Response({'error': 'Message khali hai!'}, status=400)
+        msg = ChatMessage.objects.create(
+            user=request.user,
+            message=message,
+            is_admin=False
+        )
+        return Response({
+            'id': msg.id,
+            'message': msg.message,
+            'is_admin': False,
+            'created_at': msg.created_at.strftime('%H:%M'),
+        }, status=201)

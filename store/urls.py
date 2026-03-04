@@ -5,7 +5,7 @@ from .views import (
     register_user, cart_view, order_view, order_tracking,
     create_payment, verify_payment,
     register_agent, assign_agent, mark_delivered, agent_status,
-    cancel_order, change_password,
+    cancel_order, change_password, chat_messages,
     MyTokenObtainPairView,  # ✅ FIX: custom view use karo
 )
 from rest_framework_simplejwt.views import TokenRefreshView
@@ -42,4 +42,5 @@ urlpatterns = [
 
     # Account
     path('change-password/', change_password, name='change_password'),
+    path('chat/', chat_messages, name='chat'),
 ]
