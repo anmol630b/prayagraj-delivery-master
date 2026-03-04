@@ -3,7 +3,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from django.contrib.auth.models import User
-from .models import Category, Product, Cart, Order, OrderItem, DeliveryAgent, DeliveryAssignment, ChatMessage, SavedAddress, Rating, FCMToken
+from .models import Category, Product, Cart, Order, OrderItem, DeliveryAgent, DeliveryAssignment, ChatMessage, SavedAddress, Rating, FCMToken, Wishlist
 from .serializers import CategorySerializer, ProductSerializer, CartSerializer, OrderSerializer
 from .notifications import send_order_notification
 from django.utils import timezone
@@ -432,3 +432,31 @@ def save_fcm_token(request):
         return Response({'error': 'Token khali hai!'}, status=400)
     FCMToken.objects.get_or_create(user=request.user, token=token)
     return Response({'message': 'Token save ho gaya!'})
+
+
+@api_view(['GET', 'POST', 'DELETE'])
+@permission_classes([IsAuthenticated])
+def wishlist_view(request, product_id=None):
+    if request.method == 'GET':
+        items = Wishlist.objects.filter(user=request.user).select_related('product')
+        data = [{
+            'id': w.id,
+            'product_id': w.product.id,
+            'name': w.product.name,
+            'price': str(w.product.price),
+            'image': w.product.image,
+        } for w in items]
+        return Response(data)
+
+    elif request.method == 'POST':
+        product = Product.objects.filter(id=product_id).first()
+        if not product:
+            return Response({'error': 'Product nahi mila!'}, status=404)
+        w, created = Wishlist.objects.get_or_create(user=request.user, product=product)
+        if created:
+            return Response({'message': 'Wishlist mein add ho gaya!', 'wishlisted': True}, status=201)
+        return Response({'message': 'Pehle se wishlist mein hai!', 'wishlisted': True})
+
+    elif request.method == 'DELETE':
+        Wishlist.objects.filter(user=request.user, product_id=product_id).delete()
+        return Response({'message': 'Wishlist se remove ho gaya!', 'wishlisted': False})

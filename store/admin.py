@@ -160,3 +160,10 @@ from .models import FCMToken
 class FCMTokenAdmin(admin.ModelAdmin):
     list_display = ['user', 'token', 'created_at']
     ordering = ['-created_at']
+
+from .models import Wishlist
+
+@admin.register(Wishlist)
+class WishlistAdmin(admin.ModelAdmin):
+    list_display = ['user', 'product', 'created_at']
+    ordering = ['-created_at']
