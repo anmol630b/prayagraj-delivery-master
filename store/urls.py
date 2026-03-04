@@ -5,9 +5,10 @@ from .views import (
     register_user, cart_view, order_view, order_tracking,
     create_payment, verify_payment,
     register_agent, assign_agent, mark_delivered, agent_status,
-    cancel_order, change_password
+    cancel_order, change_password,
+    MyTokenObtainPairView,  # ✅ FIX: custom view use karo
 )
-from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
+from rest_framework_simplejwt.views import TokenRefreshView
 
 router = DefaultRouter()
 router.register(r'categories', CategoryViewSet)
@@ -16,10 +17,12 @@ router.register(r'products', ProductViewSet)
 urlpatterns = [
     path('', include(router.urls)),
 
+    # ✅ FIX: MyTokenObtainPairView — email bhi return karega
+    path('token/', MyTokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+
     # Auth
     path('register/', register_user, name='register'),
-    path('token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
-    path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
 
     # Cart & Orders
     path('cart/', cart_view, name='cart'),

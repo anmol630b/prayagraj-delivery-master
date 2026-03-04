@@ -7,12 +7,26 @@ from .models import Category, Product, Cart, Order, OrderItem, DeliveryAgent, De
 from .serializers import CategorySerializer, ProductSerializer, CartSerializer, OrderSerializer
 from .notifications import send_order_notification
 from django.utils import timezone
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from rest_framework_simplejwt.views import TokenObtainPairView
 import razorpay
 import os
 
 razorpay_client = razorpay.Client(
     auth=(os.environ.get('RAZORPAY_KEY_ID'), os.environ.get('RAZORPAY_KEY_SECRET'))
 )
+
+# ✅ FIX 1: Custom JWT token jo email bhi return kare
+class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
+    def validate(self, attrs):
+        data = super().validate(attrs)
+        data['email'] = self.user.email        # email add kiya
+        data['username'] = self.user.username  # username bhi
+        return data
+
+class MyTokenObtainPairView(TokenObtainPairView):
+    serializer_class = MyTokenObtainPairSerializer
+
 
 class CategoryViewSet(viewsets.ModelViewSet):
     queryset = Category.objects.all()
@@ -110,18 +124,44 @@ def order_view(request):
         return Response(serializer.data)
 
     elif request.method == 'POST':
+        # ✅ FIX 2: Payment verify karo pehle, tab order place karo
+        razorpay_payment_id = request.data.get('razorpay_payment_id')
+        razorpay_order_id   = request.data.get('razorpay_order_id')
+        razorpay_signature  = request.data.get('razorpay_signature')
+
+        if not all([razorpay_payment_id, razorpay_order_id, razorpay_signature]):
+            return Response(
+                {'error': 'Payment verification required! Pehle payment karo.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            razorpay_client.utility.verify_payment_signature({
+                'razorpay_order_id':   razorpay_order_id,
+                'razorpay_payment_id': razorpay_payment_id,
+                'razorpay_signature':  razorpay_signature
+            })
+        except razorpay.errors.SignatureVerificationError:
+            return Response(
+                {'error': 'Payment verification failed! Invalid signature.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
         cart_items = Cart.objects.filter(user=request.user)
         if not cart_items:
             return Response({'error': 'Cart is empty'}, status=status.HTTP_400_BAD_REQUEST)
+
         total   = sum(item.product.price * item.quantity for item in cart_items)
         address = request.data.get('address', '')
         order   = Order.objects.create(user=request.user, total_price=total, address=address)
+
         for item in cart_items:
             OrderItem.objects.create(
                 order=order, product=item.product,
                 quantity=item.quantity, price=item.product.price
             )
         cart_items.delete()
+
         fcm_token = request.data.get('fcm_token')
         if fcm_token:
             send_order_notification(
