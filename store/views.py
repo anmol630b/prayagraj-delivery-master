@@ -3,7 +3,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from django.contrib.auth.models import User
-from .models import Category, Product, Cart, Order, OrderItem, DeliveryAgent, DeliveryAssignment, ChatMessage, SavedAddress, Rating
+from .models import Category, Product, Cart, Order, OrderItem, DeliveryAgent, DeliveryAssignment, ChatMessage, SavedAddress, Rating, FCMToken
 from .serializers import CategorySerializer, ProductSerializer, CartSerializer, OrderSerializer
 from .notifications import send_order_notification
 from django.utils import timezone
@@ -422,3 +422,13 @@ def product_ratings(request, product_id):
             review=review
         )
         return Response({'message': 'Rating de di!', 'id': rating.id}, status=201)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def save_fcm_token(request):
+    token = request.data.get('token', '').strip()
+    if not token:
+        return Response({'error': 'Token khali hai!'}, status=400)
+    FCMToken.objects.get_or_create(user=request.user, token=token)
+    return Response({'message': 'Token save ho gaya!'})
