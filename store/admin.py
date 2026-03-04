@@ -138,3 +138,10 @@ class ChatMessageAdmin(admin.ModelAdmin):
     list_display = ['user', 'message', 'is_admin', 'created_at']
     list_filter = ['is_admin', 'user']
     ordering = ['-created_at']
+
+from .models import SavedAddress
+
+@admin.register(SavedAddress)
+class SavedAddressAdmin(admin.ModelAdmin):
+    list_display = ['user', 'label', 'address', 'is_default']
+    list_filter = ['is_default', 'user']

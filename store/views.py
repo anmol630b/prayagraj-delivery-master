@@ -3,7 +3,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from django.contrib.auth.models import User
-from .models import Category, Product, Cart, Order, OrderItem, DeliveryAgent, DeliveryAssignment, ChatMessage
+from .models import Category, Product, Cart, Order, OrderItem, DeliveryAgent, DeliveryAssignment, ChatMessage, SavedAddress
 from .serializers import CategorySerializer, ProductSerializer, CartSerializer, OrderSerializer
 from .notifications import send_order_notification
 from django.utils import timezone
@@ -346,3 +346,43 @@ def chat_messages(request):
             'is_admin': False,
             'created_at': msg.created_at.strftime('%H:%M'),
         }, status=201)
+
+
+@api_view(['GET', 'POST', 'PUT', 'DELETE'])
+@permission_classes([IsAuthenticated])
+def saved_addresses(request, address_id=None):
+    if request.method == 'GET':
+        addresses = SavedAddress.objects.filter(user=request.user).order_by('-is_default', '-created_at')
+        data = [{'id': a.id, 'label': a.label, 'address': a.address, 'is_default': a.is_default} for a in addresses]
+        return Response(data)
+
+    elif request.method == 'POST':
+        label = request.data.get('label', 'Ghar')
+        address = request.data.get('address', '').strip()
+        is_default = request.data.get('is_default', False)
+        if not address:
+            return Response({'error': 'Address khali hai!'}, status=400)
+        if is_default:
+            SavedAddress.objects.filter(user=request.user).update(is_default=False)
+        addr = SavedAddress.objects.create(
+            user=request.user, label=label, address=address, is_default=is_default)
+        return Response({'id': addr.id, 'label': addr.label, 'address': addr.address, 'is_default': addr.is_default}, status=201)
+
+    elif request.method == 'PUT':
+        addr = SavedAddress.objects.filter(id=address_id, user=request.user).first()
+        if not addr:
+            return Response({'error': 'Address nahi mila!'}, status=404)
+        if request.data.get('is_default'):
+            SavedAddress.objects.filter(user=request.user).update(is_default=False)
+        addr.label = request.data.get('label', addr.label)
+        addr.address = request.data.get('address', addr.address)
+        addr.is_default = request.data.get('is_default', addr.is_default)
+        addr.save()
+        return Response({'id': addr.id, 'label': addr.label, 'address': addr.address, 'is_default': addr.is_default})
+
+    elif request.method == 'DELETE':
+        addr = SavedAddress.objects.filter(id=address_id, user=request.user).first()
+        if not addr:
+            return Response({'error': 'Address nahi mila!'}, status=404)
+        addr.delete()
+        return Response({'message': 'Address delete ho gaya!'})

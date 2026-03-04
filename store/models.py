@@ -94,3 +94,14 @@ class ChatMessage(models.Model):
     def __str__(self):
         sender = "Admin" if self.is_admin else self.user.username
         return f"{sender}: {self.message[:30]}"
+
+
+class SavedAddress(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    label = models.CharField(max_length=50)  # Ghar, Office, etc
+    address = models.TextField()
+    is_default = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.user.username} - {self.label}"
