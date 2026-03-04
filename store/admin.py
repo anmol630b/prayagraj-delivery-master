@@ -153,3 +153,10 @@ class RatingAdmin(admin.ModelAdmin):
     list_display = ['user', 'product', 'stars', 'review', 'created_at']
     list_filter = ['stars']
     ordering = ['-created_at']
+
+from .models import FCMToken
+
+@admin.register(FCMToken)
+class FCMTokenAdmin(admin.ModelAdmin):
+    list_display = ['user', 'token', 'created_at']
+    ordering = ['-created_at']
