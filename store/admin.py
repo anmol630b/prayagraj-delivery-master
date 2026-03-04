@@ -131,4 +131,10 @@ class DeliveryAssignmentAdmin(admin.ModelAdmin):
             mins = int(diff.total_seconds() / 60)
             return f'{mins} min'
         return '⏳ Pending'
-    duration.short_description = 'Delivery Time'
+    duration.short_description = 'Delivery Time'from .models import ChatMessage
+
+@admin.register(ChatMessage)
+class ChatMessageAdmin(admin.ModelAdmin):
+    list_display = ['user', 'message', 'is_admin', 'created_at']
+    list_filter = ['is_admin', 'user']
+    ordering = ['-created_at']
