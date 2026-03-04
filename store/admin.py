@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.utils.html import format_html
 from django.utils.safestring import mark_safe
-from .models import Category, Product, Cart, Order, OrderItem, DeliveryAgent, DeliveryAssignment
+from .models import Category, Product, Cart, Order, OrderItem, DeliveryAgent, DeliveryAssignment, ChatMessage
 
 
 class OrderItemInline(admin.TabularInline):
@@ -131,7 +131,7 @@ class DeliveryAssignmentAdmin(admin.ModelAdmin):
             mins = int(diff.total_seconds() / 60)
             return f'{mins} min'
         return '⏳ Pending'
-    duration.short_description = 'Delivery Time'from .models import ChatMessage
+    duration.short_description = 'Delivery Time'
 
 @admin.register(ChatMessage)
 class ChatMessageAdmin(admin.ModelAdmin):
