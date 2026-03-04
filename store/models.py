@@ -105,3 +105,18 @@ class SavedAddress(models.Model):
 
     def __str__(self):
         return f"{self.user.username} - {self.label}"
+
+
+class Rating(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    product = models.ForeignKey(Product, on_delete=models.CASCADE)
+    order = models.ForeignKey(Order, on_delete=models.CASCADE)
+    stars = models.IntegerField(default=5)
+    review = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ['user', 'product', 'order']
+
+    def __str__(self):
+        return f"{self.user.username} - {self.product.name} - {self.stars}⭐"

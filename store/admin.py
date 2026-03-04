@@ -145,3 +145,11 @@ from .models import SavedAddress
 class SavedAddressAdmin(admin.ModelAdmin):
     list_display = ['user', 'label', 'address', 'is_default']
     list_filter = ['is_default', 'user']
+
+from .models import Rating
+
+@admin.register(Rating)
+class RatingAdmin(admin.ModelAdmin):
+    list_display = ['user', 'product', 'stars', 'review', 'created_at']
+    list_filter = ['stars']
+    ordering = ['-created_at']

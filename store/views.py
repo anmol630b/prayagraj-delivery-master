@@ -3,7 +3,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from django.contrib.auth.models import User
-from .models import Category, Product, Cart, Order, OrderItem, DeliveryAgent, DeliveryAssignment, ChatMessage, SavedAddress
+from .models import Category, Product, Cart, Order, OrderItem, DeliveryAgent, DeliveryAssignment, ChatMessage, SavedAddress, Rating
 from .serializers import CategorySerializer, ProductSerializer, CartSerializer, OrderSerializer
 from .notifications import send_order_notification
 from django.utils import timezone
@@ -386,3 +386,39 @@ def saved_addresses(request, address_id=None):
             return Response({'error': 'Address nahi mila!'}, status=404)
         addr.delete()
         return Response({'message': 'Address delete ho gaya!'})
+
+
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
+def product_ratings(request, product_id):
+    if request.method == 'GET':
+        ratings = Rating.objects.filter(product_id=product_id).order_by('-created_at')
+        data = [{
+            'id': r.id,
+            'username': r.user.username,
+            'stars': r.stars,
+            'review': r.review,
+            'created_at': r.created_at.strftime('%d %b %Y'),
+        } for r in ratings]
+        avg = sum(r['stars'] for r in data) / len(data) if data else 0
+        return Response({'average': round(avg, 1), 'total': len(data), 'ratings': data})
+
+    elif request.method == 'POST':
+        stars = request.data.get('stars', 5)
+        review = request.data.get('review', '')
+        order_id = request.data.get('order_id')
+        if not order_id:
+            return Response({'error': 'Order ID chahiye!'}, status=400)
+        order = Order.objects.filter(id=order_id, user=request.user, status='delivered').first()
+        if not order:
+            return Response({'error': 'Delivered order nahi mila!'}, status=400)
+        if Rating.objects.filter(user=request.user, product_id=product_id, order=order).exists():
+            return Response({'error': 'Pehle se rating de chuke ho!'}, status=400)
+        rating = Rating.objects.create(
+            user=request.user,
+            product_id=product_id,
+            order=order,
+            stars=stars,
+            review=review
+        )
+        return Response({'message': 'Rating de di!', 'id': rating.id}, status=201)
