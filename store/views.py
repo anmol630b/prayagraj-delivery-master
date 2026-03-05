@@ -5,7 +5,7 @@ from rest_framework.response import Response
 from django.contrib.auth.models import User
 from .models import Category, Product, Cart, Order, OrderItem, DeliveryAgent, DeliveryAssignment, ChatMessage, SavedAddress, Rating, FCMToken, Wishlist, UserProfile
 from .serializers import CategorySerializer, ProductSerializer, CartSerializer, OrderSerializer
-from .notifications import send_order_notification
+from .notifications import send_order_notification, send_status_notification
 from django.utils import timezone
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework_simplejwt.views import TokenObtainPairView
@@ -166,6 +166,13 @@ def cancel_order(request, order_id):
         )
     order.status = 'cancelled'
     order.save()
+    # Notification bhejo
+    try:
+        from .models import FCMToken
+        fcm = FCMToken.objects.filter(user=order.user).last()
+        if fcm:
+            send_status_notification(fcm.token, order.id, 'cancelled')
+    except: pass
     return Response({'message': f'Order #{order.id} cancel ho gaya ✅'})
 
 @api_view(['POST'])
