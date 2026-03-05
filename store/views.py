@@ -124,29 +124,7 @@ def order_view(request):
         return Response(serializer.data)
 
     elif request.method == 'POST':
-        # ✅ FIX 2: Payment verify karo pehle, tab order place karo
-        razorpay_payment_id = request.data.get('razorpay_payment_id')
-        razorpay_order_id   = request.data.get('razorpay_order_id')
-        razorpay_signature  = request.data.get('razorpay_signature')
-
-        if not all([razorpay_payment_id, razorpay_order_id, razorpay_signature]):
-            return Response(
-                {'error': 'Payment verification required! Pehle payment karo.'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        try:
-            razorpay_client.utility.verify_payment_signature({
-                'razorpay_order_id':   razorpay_order_id,
-                'razorpay_payment_id': razorpay_payment_id,
-                'razorpay_signature':  razorpay_signature
-            })
-        except razorpay.errors.SignatureVerificationError:
-            return Response(
-                {'error': 'Payment verification failed! Invalid signature.'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
+        # COD payment system
         cart_items = Cart.objects.filter(user=request.user)
         if not cart_items:
             return Response({'error': 'Cart is empty'}, status=status.HTTP_400_BAD_REQUEST)
