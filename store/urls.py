@@ -5,7 +5,7 @@ from .views import (
     register_user, cart_view, order_view, order_tracking,
     create_payment, verify_payment,
     register_agent, assign_agent, mark_delivered, agent_status,
-    cancel_order, change_password, chat_messages, saved_addresses, product_ratings, save_fcm_token, wishlist_view,
+    cancel_order, change_password, chat_messages, saved_addresses, product_ratings, save_fcm_token, wishlist_view, user_profile,
     MyTokenObtainPairView,  # ✅ FIX: custom view use karo
 )
 from rest_framework_simplejwt.views import TokenRefreshView
@@ -49,4 +49,5 @@ urlpatterns = [
     path('fcm-token/', save_fcm_token, name='save_fcm_token'),
     path('wishlist/', wishlist_view, name='wishlist'),
     path('wishlist/<int:product_id>/', wishlist_view, name='wishlist_detail'),
+    path('profile/', user_profile, name='user_profile'),
 ]

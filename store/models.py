@@ -141,3 +141,12 @@ class Wishlist(models.Model):
 
     def __str__(self):
         return f"{self.user.username} - {self.product.name}"
+
+
+class UserProfile(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    phone = models.CharField(max_length=15, blank=True)
+    avatar_url = models.URLField(blank=True, null=True)
+
+    def __str__(self):
+        return f"{self.user.username} - Profile"

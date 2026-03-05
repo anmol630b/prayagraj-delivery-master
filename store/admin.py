@@ -167,3 +167,9 @@ from .models import Wishlist
 class WishlistAdmin(admin.ModelAdmin):
     list_display = ['user', 'product', 'created_at']
     ordering = ['-created_at']
+
+from .models import UserProfile
+
+@admin.register(UserProfile)
+class UserProfileAdmin(admin.ModelAdmin):
+    list_display = ['user', 'phone', 'avatar_url']

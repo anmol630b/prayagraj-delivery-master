@@ -3,7 +3,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from django.contrib.auth.models import User
-from .models import Category, Product, Cart, Order, OrderItem, DeliveryAgent, DeliveryAssignment, ChatMessage, SavedAddress, Rating, FCMToken, Wishlist
+from .models import Category, Product, Cart, Order, OrderItem, DeliveryAgent, DeliveryAssignment, ChatMessage, SavedAddress, Rating, FCMToken, Wishlist, UserProfile
 from .serializers import CategorySerializer, ProductSerializer, CartSerializer, OrderSerializer
 from .notifications import send_order_notification
 from django.utils import timezone
@@ -460,3 +460,26 @@ def wishlist_view(request, product_id=None):
     elif request.method == 'DELETE':
         Wishlist.objects.filter(user=request.user, product_id=product_id).delete()
         return Response({'message': 'Wishlist se remove ho gaya!', 'wishlisted': False})
+
+
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
+def user_profile(request):
+    profile, _ = UserProfile.objects.get_or_create(user=request.user)
+    
+    if request.method == 'GET':
+        return Response({
+            'username': request.user.username,
+            'email': request.user.email,
+            'phone': profile.phone,
+            'avatar_url': profile.avatar_url,
+        })
+    
+    elif request.method == 'POST':
+        profile.phone = request.data.get('phone', profile.phone)
+        profile.avatar_url = request.data.get('avatar_url', profile.avatar_url)
+        request.user.email = request.data.get('email', request.user.email)
+        request.user.first_name = request.data.get('first_name', request.user.first_name)
+        request.user.save()
+        profile.save()
+        return Response({'message': 'Profile updated!'})
