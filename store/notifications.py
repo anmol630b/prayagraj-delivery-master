@@ -1,16 +1,21 @@
 import firebase_admin
 from firebase_admin import credentials, messaging
 import os
+import json
 
-# Firebase initialize karo
 _initialized = False
 
 def _init_firebase():
     global _initialized
     if not _initialized:
         try:
-            cred_path = os.path.join(os.path.dirname(__file__), 'firebase-credentials.json')
-            cred = credentials.Certificate(cred_path)
+            cred_json = os.environ.get('FIREBASE_CREDENTIALS')
+            if cred_json:
+                cred_dict = json.loads(cred_json)
+                cred = credentials.Certificate(cred_dict)
+            else:
+                cred_path = os.path.join(os.path.dirname(__file__), 'firebase-credentials.json')
+                cred = credentials.Certificate(cred_path)
             firebase_admin.initialize_app(cred)
             _initialized = True
         except Exception as e:
@@ -21,13 +26,10 @@ def send_order_notification(fcm_token, title, body):
         _init_firebase()
         message = messaging.Message(
             notification=messaging.Notification(title=title, body=body),
-            data={'title': title, 'body': body, 'click_action': 'FLUTTER_NOTIFICATION_CLICK'},
+            data={'title': title, 'body': body},
             android=messaging.AndroidConfig(
                 priority='high',
-                notification=messaging.AndroidNotification(
-                    sound='default',
-                    priority='high',
-                )
+                notification=messaging.AndroidNotification(sound='default'),
             ),
             token=fcm_token,
         )
